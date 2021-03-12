@@ -8,6 +8,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.sql.*;
 import java.util.List;
 import java.util.Scanner;
 import java.util.Vector;
@@ -20,22 +21,27 @@ public class Server {
     private DataInputStream in;
     private DataOutputStream out;
 
+    public static Connection connection;
+    public static Statement stmt;
+    public static PreparedStatement psInsert;
+
     private List<ClientHandler> clients;
     private AuthService authService;
 
     public Server() {
+
+        //authService = new SimpleAuthServise();
+
         clients = new CopyOnWriteArrayList<>();
-//        authService = new SimpleAuthServise();
-        //==============//
-        if (!SQLHandler.connect()) {
-            throw new RuntimeException("Не удалось подключиться к БД");
-        }
-        authService = new DBAuthServise();
-        //==============//
+
 
         try {
             server = new ServerSocket(PORT);
+
             System.out.println("Server started");
+            connect();
+            System.out.println("Server соединился c BD");
+            authService = new AuthServiseDB();
 
             while (true) {
                 socket = server.accept();
@@ -46,14 +52,19 @@ public class Server {
 
         } catch (IOException e) {
             e.printStackTrace();
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
         } finally {
-            SQLHandler.disconnect();
             try {
+                disconnect();
                 socket.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }
             try {
+                disconnect();
                 server.close();
             } catch (IOException e) {
                 e.printStackTrace();
@@ -61,40 +72,33 @@ public class Server {
         }
     }
 
-    public void broadcastMsg(ClientHandler sender, String msg){
+    public void broadcastMsg(ClientHandler sender, String msg) {
         String message = String.format("[ %s ]: %s", sender.getNickname(), msg);
-        //==============//
-        SQLHandler.addMessage(sender.getNickname(), "null", msg, "once upon a time");
-        //==============//
-
         for (ClientHandler c : clients) {
             c.sendMsg(message);
         }
     }
 
-    public void privateMsg(ClientHandler sender,String receiver, String msg){
+    public void privateMsg(ClientHandler sender, String receiver, String msg) {
         String message = String.format("[ %s ] to [ %s ]: %s", sender.getNickname(), receiver, msg);
         for (ClientHandler c : clients) {
-            if(c.getNickname().equals(receiver)){
+            if (c.getNickname().equals(receiver)) {
                 c.sendMsg(message);
-                //==============//
-                SQLHandler.addMessage(sender.getNickname(), receiver, msg, "once upon a time");
-                //==============//
-                if(!c.equals(sender)){
+                if (!c.equals(sender)) {
                     sender.sendMsg(message);
                 }
                 return;
             }
         }
-        sender.sendMsg("not found user: "+ receiver);
+        sender.sendMsg("not found user: " + receiver);
     }
 
-    public void subscribe(ClientHandler clientHandler){
+    public void subscribe(ClientHandler clientHandler) {
         clients.add(clientHandler);
         broadcastClientlist();
     }
 
-    public void unsubscribe(ClientHandler clientHandler){
+    public void unsubscribe(ClientHandler clientHandler) {
         clients.remove(clientHandler);
         broadcastClientlist();
     }
@@ -103,16 +107,16 @@ public class Server {
         return authService;
     }
 
-    public boolean isLoginAuthenticated(String login){
+    public boolean isLoginAuthenticated(String login) {
         for (ClientHandler c : clients) {
-            if(c.getLogin().equals(login)){
+            if (c.getLogin().equals(login)) {
                 return true;
             }
         }
         return false;
     }
 
-    public void broadcastClientlist(){
+    public void broadcastClientlist() {
         StringBuilder sb = new StringBuilder(Command.CLIENT_LIST);
 
         for (ClientHandler c : clients) {
@@ -124,5 +128,33 @@ public class Server {
         for (ClientHandler c : clients) {
             c.sendMsg(msg);
         }
+    }
+
+    public static void connect() throws ClassNotFoundException, SQLException {
+        Class.forName("org.sqlite.JDBC");
+        connection = DriverManager.getConnection("jdbc:sqlite:main.db");
+        stmt = connection.createStatement();
+    }
+
+    public static void disconnect() {
+        try {
+            stmt.close();
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+        try {
+            connection.close();
+        } catch (SQLException throwables) {
+            throwables.printStackTrace();
+        }
+    }
+
+    public void changeNik(String oldNick, String newNick) {
+        for (ClientHandler c : clients) {
+            if (c.getNickname().equals(oldNick)) {
+                c.setNickname(newNick);
+            }
+        }
+        return;
     }
 }
