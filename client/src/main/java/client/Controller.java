@@ -139,16 +139,7 @@ public class Controller implements Initializable {
                                     }
                                 });
                             }
-                            if (str.startsWith(Command.CHANGE_NICK_OK)) {
-                               String[] token = str.split("\\s");
-                                Platform.runLater(() -> {
-                                    clientList.getItems().clear();
-                                    for (int i = 1; i < token.length; i++) {
-                                        clientList.getItems().add(token[i]);
-                                    }
-                                });
 
-                            }
 
 
                         } else {

@@ -155,6 +155,7 @@ public class Server {
                 c.setNickname(newNick);
             }
         }
+        broadcastClientlist();
         return;
     }
 }
