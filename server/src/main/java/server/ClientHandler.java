@@ -14,8 +14,13 @@ public class ClientHandler {
     private DataInputStream in;
     private DataOutputStream out;
 
+    public void setNickname(String nickname) {
+        this.nickname = nickname;
+    }
+
     private String nickname;
     private String login;
+    private String password;
 
     public ClientHandler(Server server, Socket socket) {
         try {
@@ -56,9 +61,6 @@ public class ClientHandler {
                                     System.out.println("client: " + socket.getRemoteSocketAddress() +
                                             " connected with nick: " + nickname);
                                     socket.setSoTimeout(0);
-                                    //==============//
-                                    sendMsg(SQLHandler.getMessageForNick(nickname));
-                                    //==============//
                                     break;
                                 } else {
                                     sendMsg("Данная учетная запись уже используется");
@@ -101,27 +103,18 @@ public class ClientHandler {
                                 }
                                 server.privateMsg(this, token[1], token[2]);
                             }
-
-                            //==============//
-                            if (str.startsWith("/chnick ")) {
-                                String[] token = str.split("\\s+", 2);
+                            // изменение ника
+                            if (str.startsWith(Command.CHANGE_NICK)) {
+                                String[] token = str.split("\\s", 2);
                                 if (token.length < 2) {
                                     continue;
                                 }
-                                if (token[1].contains(" ")) {
-                                    sendMsg("Ник не может содержать пробелов");
-                                    continue;
-                                }
-                                if (server.getAuthService().changeNick(this.nickname, token[1])) {
-                                    sendMsg("/yournickis " + token[1]);
-                                    sendMsg("Ваш ник изменен на " + token[1]);
-                                    this.nickname = token[1];
-                                    server.broadcastClientlist();
-                                } else {
-                                    sendMsg("Не удалось изменить ник. Ник " + token[1] + " уже существует");
-                                }
+                                server.getAuthService().chengeNick(this.nickname,token[1]);
+                                server.changeNik(this.nickname,token[1]);
+                                System.out.println(this.nickname+" "+token[1]);
+
                             }
-                            //==============//
+
 
                         } else {
                             server.broadcastMsg(this, str);
@@ -159,6 +152,7 @@ public class ClientHandler {
     public String getNickname() {
         return nickname;
     }
+
 
     public String getLogin() {
         return login;

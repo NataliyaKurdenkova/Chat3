@@ -53,7 +53,7 @@ public class SimpleAuthServise implements AuthService {
     }
 
     @Override
-    public boolean changeNick(String oldNickname, String newNickname) {
+    public boolean chengeNick(String oldNick, String newNick) {
         return false;
     }
 }
